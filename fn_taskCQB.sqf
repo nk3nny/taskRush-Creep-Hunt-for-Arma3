@@ -1,5 +1,5 @@
 // CQB script
-// version 0.28a
+// version 0.28b
 // by nkenny
 
 /*
@@ -9,7 +9,6 @@
     marks building safe
     moves to next building
     repeat until no buildings left
-
   Arguments
     1, Group or object          [Object or Group]
     2, Range                    [Number]
@@ -19,16 +18,16 @@
 
 // find buildings
 _fn_find = {
-    _building = nearestobjects [(leader _group),["house","strategic","ruins"],_range,true];
+    _building = nearestobjects [(leader _group), ["house", "strategic", "ruins"], _range, true];
     _building = _building select {count (_x buildingPos -1) > 0};
-    _building = _building select {count (_x getVariable ["LAMBS_CQB_cleared_" + str (side _group),[0,0]]) > 0}; 
+    _building = _building select {count (_x getVariable ["LAMBS_CQB_cleared_" + str (side _group), [0, 0]]) > 0};
     if (count _building > 0) exitWith {_building select 0};
     ObjNull
 };
 
 // check for enemies
 _fn_enemy = {
-    private _pos = if (isNull _building) then {getpos leader _group} else {getpos _building};
+    private _pos = [getpos _building, getpos leader _group] select isNull _building;
     _enemy = (leader _group) findNearestEnemy _pos;
     if (isNull _enemy || {_pos distance2d _enemy < 25}) exitWith {_enemy};
     leader _group doSuppressiveFire _enemy;
@@ -42,30 +41,31 @@ _fn_act = {
 
         // posture
         doStop units _group; 
-        leader _group playAction selectRandom ["gestureAttack","gestureGo","gestureGoB"];
-        
+        leader _group playAction selectRandom ["gestureAttack", "gestureGo", "gestureGoB"];
+
         // location 
         _buildingPos = ((nearestBuilding _enemy) buildingPos -1) select {_x distance _enemy < 5};
         _buildingPos pushBack getPosATL _enemy;
-        
+
         // act
-        {_x doMove selectRandom _buildingPos;_x doWatch _enemy;true} count units _group; 
+        {_x doMove selectRandom _buildingPos; _x doWatch _enemy; true} count units _group; 
     };
 
     // clear and check buildings
-    _buildingPos = _building getVariable ["LAMBS_CQB_cleared_" + str (side _group),(_building buildingPos -1) select {lineIntersects [AGLToASL _x, (AGLToASL _x) vectorAdd [0,0,10]]}];
+    _buildingPos = _building getVariable ["LAMBS_CQB_cleared_" + str (side _group),(_building buildingPos -1) select {lineIntersects [AGLToASL _x, (AGLToASL _x) vectorAdd [0, 0, 10]]}];
     {
         // the assault 
         if ((count _buildingPos > 0) && {unitReady _x}) then {
             _x setUnitPos "UP";
-            _x doMove ((_buildingPos select 0) vectorAdd [0.5 - random 1,0.5 - random 1,0]);
+            _x forceSpeed 3;
+            _x doMove ((_buildingPos select 0) vectorAdd [0.5 - random 1, 0.5 - random 1, 0]);
 
             // clean list 
             if (_x distance (_buildingPos select 0) < 30 || {(leader _group isEqualTo _x) && {random 1 > 0.5}}) then {
                 _buildingPos deleteAt 0;
             } else {
                 // teleport debug (unit sometimes gets stuck due to Arma buildings )
-                if (lineIntersects [eyePos _x, (eyePos _x) vectorAdd [0,0,10]] && {_x distance (_buildingPos select 0) > 45} && {random 1 > 0.6}) then {
+                if (lineIntersects [eyePos _x, (eyePos _x) vectorAdd [0, 0, 10]] && {_x distance (_buildingPos select 0) > 45} && {random 1 > 0.6}) then {
                 _x setVehiclePosition [getPos _x, [], 3.5];
                 };
             };
@@ -75,7 +75,7 @@ _fn_act = {
             _x setUnitPos "MIDDLE";
 
             // unit is ready and outside -- try suppressive fire 
-            if (unitReady _x && {!(lineIntersects [eyePos _x, (eyePos _x) vectorAdd [0,0,10]])}) then {
+            if (unitReady _x && {!(lineIntersects [eyePos _x, (eyePos _x) vectorAdd [0, 0, 10]])}) then {
                 _x doSuppressiveFire _building;
                 _x doFollow leader _group;
             };
@@ -84,13 +84,13 @@ _fn_act = {
     } count units _group;
 
     // update variable
-    _building setVariable ["LAMBS_CQB_cleared_" + str (side _group),_buildingPos];
+    _building setVariable ["LAMBS_CQB_cleared_" + str (side _group), _buildingPos];
 };
 
 // functions end ---
 
 // init
-params ["_group",["_range",50],["_cycle",21]];
+params ["_group", ["_range", 50], ["_cycle", 21]];
 
 // sort grp
 if (!local _group) exitWith {};
@@ -116,14 +116,14 @@ while {{alive _x} count units _group > 0} do {
     _building = call _fn_find;
 
     // find enemy
-    _enemy = call _fn_enemy; 
+    _enemy = call _fn_enemy;
 
     // act! 
-    if (isNull _building && {isNull _enemy}) exitWith {}; 
-    call _fn_act; 
+    if (isNull _building && {isNull _enemy}) exitWith {};
+    call _fn_act;
 
     // wait
-    sleep _cycle; 
+    sleep _cycle;
 };
 
 // end
